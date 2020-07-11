@@ -5,7 +5,7 @@ var weiboAutoCommentTool = (function(){
 		delay: 10000,
 		//评论内容
 		content: (function(){
-			return "测试时间 " + +new Date();
+			return "是这样的"
 		})()
 	};
 	var needCommentIdList = [];
@@ -30,23 +30,29 @@ var weiboAutoCommentTool = (function(){
 	var logger = function(msg){
 		console.log(dateFormat('yyyy-MM-dd hh:mm:ss', new Date()) + ": " + msg);
 	};
+
+	var commentButtonClicked = function (commentButton) {
+    return commentButton.getAttribute('suda-data')
+      .match(/key=(.*)&value=/)[1].indexOf("off") !== -1
+  };
+
 	var comment = function(id){
 		console.log("----------------------------------------->");
 		logger("Commenting " + id);
 		var feedItem = document.querySelector('div[mid="' + id + '"]');
-		var commentButton = feedItem.querySelector('a[action-type="fl_comment"]');
+		var commentButton = feedItem.querySelector('a[action-type="feed_list_comment"]');
 		//没有打开的话，模拟点击打开
-		if(commentButton.parentNode.className != "curr") {
+		if(!commentButtonClicked(commentButton)) {
 			commentButton.click();
 			logger("Comment list is not loaded, start loading...");
 		}
 		logger("Waiting comment list loading...");
 		//等待评论框出现
 		setTimeout(function(){
-			var textArea = feedItem.querySelector('.W_input');
+			var textArea = feedItem.querySelector('textarea[action-type="check"]');
 			textArea.value = defaultOption.content;
 			
-			var sendButton = feedItem.querySelector('.W_btn_a');
+			var sendButton = feedItem.querySelector('.s-btn-a');
 			sendButton.click();
 			logger("Sending comment content completed.");
 			
@@ -77,33 +83,24 @@ var weiboAutoCommentTool = (function(){
 		innerAction();
 	};
 	var isThisItemCommented = function(id){
-		return needCommentIdList.indexOf(id) >= 0;		
+		return needCommentIdList.indexOf(id) >= 0;
 	};
-	var getAllFeeds = function(){
-		var ret = [];
-		var feedWrap = document.querySelector('[node-type="feed_list"]');
-		for(var c in feedWrap.children) {
-			var child = feedWrap.children[c];
-			if(typeof(child.getAttribute) === "function") {
-				var childId = child.getAttribute('mid');
-				if(!isThisItemCommented(childId)) {
-					ret.push(childId);
-				}
-			}
-		}
-		return ret;
+	var getAllFeedIds = function(){
+		return [...document.querySelectorAll('#pl_feedlist_index .card-wrap')]
+      .map(c => c.getAttribute('mid'))
+      .filter(id => id !== null && !isThisItemCommented(id));
 	};
 	var commentAction = function(){
 		if(!running) {
 			logger("Comment action stoped, exit.");
 			return;
 		}
-		var allFeeds = getAllFeeds();
+		var allFeeds = getAllFeedIds();
 		//如果没有记录了，则需要滚动屏幕
 		if(!allFeeds.length) {
 			document.body.scrollTop = document.body.scrollTop + 500;
 			//然后再获取一次
-			allFeeds = getAllFeeds();
+			allFeeds = getAllFeedIds();
 		}
 		for(var item in allFeeds) {
 			var id = allFeeds[item];
